@@ -37,7 +37,9 @@ const dojo_pool = await processFile(getEnvValue("FILENAME_DOJO_POOL"));
 
 const datasets = [holders, dojo_inj_lp, dojo_pool];
 
-const result: { [key: string]: { value: Decimal[]; note: string } } = {};
+const result: {
+  [key: string]: { balances: Decimal[]; sum: Decimal; note: string };
+} = {};
 
 for (const [i, dataset] of datasets.entries()) {
   for (const r of dataset) {
@@ -45,25 +47,25 @@ for (const [i, dataset] of datasets.entries()) {
 
     if (!result[addr]) {
       result[addr] = {
-        value: datasets.map(() => new Decimal(0)),
+        balances: datasets.map(() => new Decimal(0)),
+        sum: new Decimal(0),
         note: "",
       };
     }
 
-    result[addr].value[i] = value;
+    result[addr].balances[i] = value;
+    result[addr].sum = result[addr].sum.add(value);
   }
 }
 
 for (const [key, d] of Object.entries(result)) {
-  const sum = d.value.reduce((acc, i) => acc.plus(i), new Decimal(0));
-
-  if (sum.gt(parseInt(getEnvValue("MIN_HOLDING_DOJO_CHECK_IF_CONTRACT")))) {
-    console.log(`address ${key} holding DOJO ${sum.toFixed(6)}`);
+  if (d.sum.gt(parseInt(getEnvValue("MIN_HOLDING_DOJO_CHECK_IF_CONTRACT")))) {
+    console.log(`address ${key} holding DOJO ${d.sum.toFixed(6)}`);
     const note = await (async () => {
       try {
         const info = await batchClient.wasm.getContractInfo(key);
 
-        console.log(info.contractInfo);
+        console.log("is contract: ", info.contractInfo?.label);
 
         return "contract: " + info.contractInfo?.label || "";
       } catch (e) {
@@ -76,12 +78,26 @@ for (const [key, d] of Object.entries(result)) {
   }
 }
 
+const sorted_entries = Object.entries(result).sort(
+  ([_addr1, a], [_addr2, b]) => {
+    if (a.sum.gt(b.sum)) {
+      return -1;
+    } else if (a.sum.lt(b.sum)) {
+      return 1;
+    } else {
+      return 0;
+    }
+  },
+);
+
 let f = "";
 
-for (const [key, d] of Object.entries(result)) {
+for (const [key, d] of sorted_entries) {
   const addr = key;
 
-  f += `${addr}, ${d.value.map((d) => d.toFixed(18)).join(",")},, ${d.note}\n`;
+  f += `${addr}, ${d.balances.map((d) => d.toFixed(18)).join(",")},${d.sum}, ${
+    d.note
+  }\n`;
 }
 
 writeFileSync(getEnvValue("FILENAME_RESULT"), f);
