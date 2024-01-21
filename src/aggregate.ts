@@ -90,7 +90,8 @@ const sorted_entries = Object.entries(result).sort(
   },
 );
 
-let f = "";
+let f =
+  "address,DOJO balance,DOJO-INJ LP + FARMER,Single DOJO Pool,Total,Contract label\n";
 
 for (const [key, d] of sorted_entries) {
   const addr = key;
