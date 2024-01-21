@@ -57,7 +57,7 @@ for (const [i, dataset] of datasets.entries()) {
 for (const [key, d] of Object.entries(result)) {
   const sum = d.value.reduce((acc, i) => acc.plus(i), new Decimal(0));
 
-  if (sum.gt(1e6)) {
+  if (sum.gt(parseInt(getEnvValue("MIN_HOLDING_DOJO_CHECK_IF_CONTRACT")))) {
     console.log(`address ${key} holding DOJO ${sum.toFixed(6)}`);
     const note = await (async () => {
       try {
